@@ -239,7 +239,7 @@ class Formulario_Acelera_Ai_Daniel_Public {
 
 		$lesson_modules = array();
 
-		foreach ( Acelera_Course_Map::WELCOME_LESSONS as $lesson_id ) {
+		foreach ( Acelera_Course_Map::welcome_lessons() as $lesson_id ) {
 
 			$path = $this->lesson_path( $lesson_id );
 
@@ -468,7 +468,7 @@ class Formulario_Acelera_Ai_Daniel_Public {
 			return '';
 		}
 
-		if ( ! in_array( (int) get_the_ID(), Acelera_Course_Map::WELCOME_LESSONS, true ) ) {
+		if ( ! in_array( (int) get_the_ID(), Acelera_Course_Map::welcome_lessons(), true ) ) {
 			return '';
 		}
 

@@ -15,7 +15,8 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 /**
- * Renders the diagnostic form (or the result screen) inside lesson 16246.
+ * Renders the diagnostic form (or the result screen) inside the welcome
+ * lesson dynamically resolved by Acelera_Course_Map::form_lesson_id().
  *
  * States, resolved via Acelera_Submissions_Repo::get_active_for_user():
  * 1. Not logged in → notice (edge case; LD already requires login).

@@ -4,8 +4,9 @@
  * Welcome gate state helper for the ACELERA course.
  *
  * Determines whether a user has completed the Welcome section
- * (lessons 16243–16246 via Acelera_Course_Map::WELCOME_LESSONS) and
- * whether a given module lesson (M1–M5) must be locked for them.
+ * (Acelera_Course_Map::welcome_lessons(), resolved dynamically from the
+ * LearnDash Course Builder "Bienvenida" section) and whether a given
+ * module lesson (m1..mN) must be locked for them.
  *
  * @link       https://danielamado.com
  * @since      1.0.0
@@ -47,14 +48,14 @@ class Acelera_Welcome_Gate {
 	private static $completed_cache = array();
 
 	/**
-	 * Whether the user has completed all 4 Welcome lessons.
+	 * Whether the user has completed every Welcome lesson.
 	 *
-	 * Iterates Acelera_Course_Map::WELCOME_LESSONS and checks each one
+	 * Iterates Acelera_Course_Map::welcome_lessons() and checks each one
 	 * with learndash_is_lesson_complete(). The result is cached per
 	 * request (see self::$completed_cache).
 	 *
-	 * Note on lesson 16246 (Formulario de Diagnóstico,
-	 * Acelera_Course_Map::FORM_LESSON_ID): Phase 4 auto-marks it complete
+	 * Note on the diagnostic form lesson
+	 * (Acelera_Course_Map::form_lesson_id()): Phase 4 auto-marks it complete
 	 * by calling learndash_process_mark_complete() when the user submits
 	 * the ACELERA diagnostic form, keeping the gate and the form in sync.
 	 * The user can also mark it complete with the standard LearnDash
@@ -82,7 +83,7 @@ class Acelera_Welcome_Gate {
 
 		$completed = true;
 
-		foreach ( Acelera_Course_Map::WELCOME_LESSONS as $lesson_id ) {
+		foreach ( Acelera_Course_Map::welcome_lessons() as $lesson_id ) {
 			if ( ! learndash_is_lesson_complete( $user_id, $lesson_id, Acelera_Course_Map::COURSE_ID ) ) {
 				$completed = false;
 				break;
@@ -138,9 +139,10 @@ class Acelera_Welcome_Gate {
 	 */
 	public static function first_incomplete_welcome_lesson( $user_id ) {
 
-		$incomplete = self::incomplete_welcome_lessons( $user_id );
+		$incomplete      = self::incomplete_welcome_lessons( $user_id );
+		$welcome_lessons = Acelera_Course_Map::welcome_lessons();
 
-		return array() !== $incomplete ? $incomplete[0] : Acelera_Course_Map::WELCOME_LESSONS[0];
+		return array() !== $incomplete ? $incomplete[0] : ( isset( $welcome_lessons[0] ) ? $welcome_lessons[0] : 0 );
 
 	}
 
@@ -155,13 +157,13 @@ class Acelera_Welcome_Gate {
 	 * @since    1.0.0
 	 * @param    int $user_id User ID.
 	 * @return   int[] Lesson post IDs still pending, same order as
-	 *                 Acelera_Course_Map::WELCOME_LESSONS. Empty array
+	 *                 Acelera_Course_Map::welcome_lessons(). Empty array
 	 *                 when everything is complete or LearnDash/user are
 	 *                 unavailable to check against.
 	 */
 	public static function incomplete_welcome_lessons( $user_id ) {
 
-		$welcome_lessons = Acelera_Course_Map::WELCOME_LESSONS;
+		$welcome_lessons = Acelera_Course_Map::welcome_lessons();
 
 		if ( ! function_exists( 'learndash_is_lesson_complete' ) || (int) $user_id <= 0 ) {
 			return array();

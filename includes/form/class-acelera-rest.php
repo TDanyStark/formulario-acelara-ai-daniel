@@ -26,8 +26,9 @@ if ( ! defined( 'WPINC' ) ) {
  *
  * /submit flow: validate (Acelera_Questions) → score (Acelera_Scoring) →
  * persist (Acelera_Submissions_Repo) → renumber (Acelera_Renaming) →
- * mark lesson 16246 complete (learndash_process_mark_complete, verified
- * signature at sfwd-lms/includes/course/ld-course-progress.php:715) →
+ * mark the diagnostic form lesson complete
+ * (Acelera_Course_Map::form_lesson_id(), via learndash_process_mark_complete,
+ * verified signature at sfwd-lms/includes/course/ld-course-progress.php:715) →
  * invalidate welcome-gate cache → result email (Acelera_Email) → fire
  * `acelera_form_completed` (Fase 5 extension point — Clientify listens
  * there; nothing Clientify/LLM-related lives in this class).
@@ -254,13 +255,15 @@ class Acelera_Rest {
 		// design — see Acelera_Renaming class docblock.
 		Acelera_Renaming::save_user_order( $user_id, $scoring['module_order'] );
 
-		// 5. Mark the form lesson (16246) complete. Signature verified at
-		// sfwd-lms/includes/course/ld-course-progress.php:715:
+		// 5. Mark the diagnostic form lesson complete. Signature verified
+		// at sfwd-lms/includes/course/ld-course-progress.php:715:
 		// learndash_process_mark_complete( $user_id, $postid, $onlycalculate, $course_id, $force ).
 		if ( function_exists( 'learndash_process_mark_complete' ) ) {
+			$form_lesson_id = Acelera_Course_Map::form_lesson_id();
+
 			$marked = learndash_process_mark_complete(
 				$user_id,
-				Acelera_Course_Map::FORM_LESSON_ID,
+				$form_lesson_id,
 				false,
 				Acelera_Course_Map::COURSE_ID
 			);
@@ -270,7 +273,7 @@ class Acelera_Rest {
 			if ( ! $marked ) {
 				learndash_process_mark_complete(
 					$user_id,
-					Acelera_Course_Map::FORM_LESSON_ID,
+					$form_lesson_id,
 					false,
 					Acelera_Course_Map::COURSE_ID,
 					true

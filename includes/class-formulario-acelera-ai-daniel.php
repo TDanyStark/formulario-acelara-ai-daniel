@@ -311,10 +311,11 @@ class Formulario_Acelera_Ai_Daniel {
 
 		// Diagnostic form (Fase 4 — Part B). The whole feature set stays
 		// inside the LEARNDASH_VERSION guard: the plugin is LD-specific
-		// (submit marks lesson 16246 complete, links point to LD lessons)
+		// (submit marks the diagnostic form lesson complete via
+		// Acelera_Course_Map::form_lesson_id(), links point to LD lessons)
 		// and the admin notice above already explains the requirement.
 
-		// [acelera_form] shortcode (lesson 16246 content).
+		// [acelera_form] shortcode (diagnostic form lesson content).
 		$plugin_shortcode = new Acelera_Form_Shortcode( $this->get_plugin_name(), $this->get_version() );
 
 		$this->loader->add_action( 'init', $plugin_shortcode, 'register_shortcode' );
