@@ -243,6 +243,63 @@ class Acelera_Submissions_Repo {
 	}
 
 	/**
+	 * Update the module order of a submission.
+	 *
+	 * Used by the "Sumisiones" admin modal drag-and-drop reorder tool. Also
+	 * resyncs the student's `acelera_module_order`/`acelera_module_labels`
+	 * user_meta via Acelera_Renaming::save_user_order() — that call is the
+	 * caller's responsibility, not this method's.
+	 *
+	 * @since  1.0.0
+	 * @param  int    $id           Submission row ID.
+	 * @param  string $module_order Module order, e.g. "m2,m1,m4,m3,m5".
+	 * @return int|false Number of rows updated, or false on failure.
+	 */
+	public function update_module_order( $id, $module_order ) {
+		global $wpdb;
+
+		return $wpdb->update(
+			self::table_name(),
+			array(
+				'module_order' => (string) $module_order,
+				'updated_at'   => current_time( 'mysql' ),
+			),
+			array( 'id' => (int) $id ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Get every submission row, newest first.
+	 *
+	 * Backs the "Exportar todas (JSON)" admin tool. No LIMIT/OFFSET: the
+	 * dataset is small (a few hundred rows), so pagination is unnecessary.
+	 *
+	 * @since  1.0.0
+	 * @param  string|null $status Optional. Filter by status (e.g. 'completed').
+	 * @return object[] Row objects (possibly empty).
+	 */
+	public function get_all( $status = null ) {
+		global $wpdb;
+
+		$table = self::table_name();
+
+		if ( null !== $status ) {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM {$table} WHERE status = %s ORDER BY id DESC",
+					(string) $status
+				)
+			);
+		} else {
+			$rows = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id DESC" );
+		}
+
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
 	 * JSON-encode arrays/objects, pass strings through untouched.
 	 *
 	 * @since  1.0.0

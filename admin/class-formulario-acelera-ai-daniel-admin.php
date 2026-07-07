@@ -80,6 +80,14 @@ class Formulario_Acelera_Ai_Daniel_Admin {
 	const LLM_NONCE_ACTION = 'acelera_llm_admin';
 
 	/**
+	 * Nonce action for the "Sumisiones" detail/reorder/export AJAX endpoints.
+	 *
+	 * @since    1.0.0
+	 * @var      string
+	 */
+	const SUBMISSIONS_NONCE_ACTION = 'acelera_submissions_nonce';
+
+	/**
 	 * Setting keys that hold API secrets and must never be printed in full.
 	 *
 	 * @since    1.0.0
@@ -154,20 +162,32 @@ class Formulario_Acelera_Ai_Daniel_Admin {
 			return;
 		}
 
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/formulario-acelera-ai-daniel-admin.js', array( 'jquery' ), $this->asset_version( 'admin/js/formulario-acelera-ai-daniel-admin.js' ), false );
+		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/formulario-acelera-ai-daniel-admin.js', array( 'jquery', 'jquery-ui-sortable' ), $this->asset_version( 'admin/js/formulario-acelera-ai-daniel-admin.js' ), false );
 
 		wp_localize_script(
 			$this->plugin_name,
 			'aceleraAdmin',
 			array(
-				'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
-				'nonce'    => wp_create_nonce( self::CLIENTIFY_NONCE_ACTION ),
-				'llmNonce' => wp_create_nonce( self::LLM_NONCE_ACTION ),
-				'i18n'     => array(
+				'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+				'nonce'            => wp_create_nonce( self::CLIENTIFY_NONCE_ACTION ),
+				'llmNonce'         => wp_create_nonce( self::LLM_NONCE_ACTION ),
+				'submissionsNonce' => wp_create_nonce( self::SUBMISSIONS_NONCE_ACTION ),
+				'exportAllUrl'     => add_query_arg(
+					array(
+						'action' => 'acelera_export_all_submissions',
+						'nonce'  => wp_create_nonce( self::SUBMISSIONS_NONCE_ACTION ),
+					),
+					admin_url( 'admin-ajax.php' )
+				),
+				'i18n'             => array(
 					'testing'      => __( 'Probando conexión…', 'formulario-acelera-ai-daniel' ),
 					'resending'    => __( 'Reprogramando…', 'formulario-acelera-ai-daniel' ),
 					'regenerating' => __( 'Eliminando feedback cacheado…', 'formulario-acelera-ai-daniel' ),
 					'genericKo'    => __( 'Error inesperado. Revisa la consola del navegador.', 'formulario-acelera-ai-daniel' ),
+					'loading'      => __( 'Cargando…', 'formulario-acelera-ai-daniel' ),
+					'saving'       => __( 'Guardando orden…', 'formulario-acelera-ai-daniel' ),
+					'saved'        => __( 'Orden guardado.', 'formulario-acelera-ai-daniel' ),
+					'notActive'    => __( 'Esta sumisión no es la activa del alumno; el orden no se puede editar.', 'formulario-acelera-ai-daniel' ),
 				),
 			)
 		);
@@ -657,6 +677,170 @@ class Formulario_Acelera_Ai_Daniel_Admin {
 		wp_send_json_success(
 			array( 'message' => __( 'Reenvío programado.', 'formulario-acelera-ai-daniel' ) )
 		);
+
+	}
+
+	/**
+	 * AJAX `acelera_get_submission_detail` — full detail for the "Ver
+	 * respuestas" modal (answers + module order).
+	 *
+	 * @since    1.0.0
+	 */
+	public function ajax_get_submission_detail() {
+
+		check_ajax_referer( self::SUBMISSIONS_NONCE_ACTION, 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'No tienes permisos suficientes.', 'formulario-acelera-ai-daniel' ) ),
+				403
+			);
+		}
+
+		$submission_id = isset( $_POST['submission_id'] ) ? (int) $_POST['submission_id'] : 0;
+
+		$repo = new Acelera_Submissions_Repo();
+		$row  = $submission_id > 0 ? $repo->get_by_id( $submission_id ) : null;
+
+		if ( ! $row ) {
+			wp_send_json_error(
+				array( 'message' => __( 'La sumisión no existe.', 'formulario-acelera-ai-daniel' ) ),
+				404
+			);
+		}
+
+		$active    = $repo->get_active_for_user( (int) $row->user_id );
+		$is_active = $active && (int) $active->id === (int) $row->id;
+
+		wp_send_json_success(
+			array(
+				'submission' => Acelera_Submission_Formatter::to_array( $row ),
+				'is_active'  => $is_active,
+			)
+		);
+
+	}
+
+	/**
+	 * AJAX `acelera_save_module_order` — persist a new module order from
+	 * the "Sumisiones" modal drag-and-drop tool.
+	 *
+	 * Only allowed on the user's currently active submission: reordering a
+	 * historical row would desync the DB row from the LMS sidebar, which
+	 * always follows the active submission's order.
+	 *
+	 * @since    1.0.0
+	 */
+	public function ajax_save_module_order() {
+
+		check_ajax_referer( self::SUBMISSIONS_NONCE_ACTION, 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'No tienes permisos suficientes.', 'formulario-acelera-ai-daniel' ) ),
+				403
+			);
+		}
+
+		$submission_id = isset( $_POST['submission_id'] ) ? (int) $_POST['submission_id'] : 0;
+		$order         = isset( $_POST['order'] ) && is_array( $_POST['order'] )
+			? array_map( 'sanitize_key', wp_unslash( $_POST['order'] ) )
+			: array();
+
+		$repo = new Acelera_Submissions_Repo();
+		$row  = $submission_id > 0 ? $repo->get_by_id( $submission_id ) : null;
+
+		if ( ! $row ) {
+			wp_send_json_error(
+				array( 'message' => __( 'La sumisión no existe.', 'formulario-acelera-ai-daniel' ) ),
+				404
+			);
+		}
+
+		$active = $repo->get_active_for_user( (int) $row->user_id );
+
+		if ( ! $active || (int) $active->id !== (int) $row->id ) {
+			wp_send_json_error(
+				array( 'message' => __( 'Solo se puede reordenar la sumisión activa del alumno.', 'formulario-acelera-ai-daniel' ) )
+			);
+		}
+
+		$sanitized_order = Acelera_Renaming::sanitize_order( $order );
+
+		$repo->update_module_order( $submission_id, implode( ',', $sanitized_order ) );
+
+		Acelera_Renaming::save_user_order( (int) $row->user_id, $sanitized_order );
+
+		wp_send_json_success(
+			array(
+				'message' => __( 'Orden guardado correctamente.', 'formulario-acelera-ai-daniel' ),
+				'modules' => Acelera_Renaming::module_items( $sanitized_order ),
+			)
+		);
+
+	}
+
+	/**
+	 * AJAX `acelera_export_submission` — download a single submission as
+	 * JSON.
+	 *
+	 * @since    1.0.0
+	 */
+	public function ajax_export_submission() {
+
+		check_ajax_referer( self::SUBMISSIONS_NONCE_ACTION, 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'No tienes permisos suficientes.', 'formulario-acelera-ai-daniel' ), 403 );
+		}
+
+		$submission_id = isset( $_GET['submission_id'] ) ? (int) $_GET['submission_id'] : 0;
+
+		$repo = new Acelera_Submissions_Repo();
+		$row  = $submission_id > 0 ? $repo->get_by_id( $submission_id ) : null;
+
+		if ( ! $row ) {
+			wp_die( esc_html__( 'La sumisión no existe.', 'formulario-acelera-ai-daniel' ), 404 );
+		}
+
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="acelera-sumision-' . (int) $submission_id . '.json"' );
+
+		echo wp_json_encode( Acelera_Submission_Formatter::to_array( $row ), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+
+		exit;
+
+	}
+
+	/**
+	 * AJAX `acelera_export_all_submissions` — download every submission as
+	 * a single JSON array.
+	 *
+	 * No pagination: the dataset is small (a few hundred rows).
+	 *
+	 * @since    1.0.0
+	 */
+	public function ajax_export_all_submissions() {
+
+		check_ajax_referer( self::SUBMISSIONS_NONCE_ACTION, 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'No tienes permisos suficientes.', 'formulario-acelera-ai-daniel' ), 403 );
+		}
+
+		$repo = new Acelera_Submissions_Repo();
+		$rows = $repo->get_all();
+
+		$data = array_map( array( 'Acelera_Submission_Formatter', 'to_array' ), $rows );
+
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="acelera-sumisiones-' . gmdate( 'Y-m-d' ) . '.json"' );
+
+		echo wp_json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+
+		exit;
 
 	}
 

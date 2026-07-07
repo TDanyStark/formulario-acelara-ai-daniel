@@ -137,6 +137,12 @@ class Formulario_Acelera_Ai_Daniel {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-acelera-submissions-repo.php';
 
 		/**
+		 * Formats a submission row into the JSON schema shared by the
+		 * "Sumisiones" admin modal and the single/bulk JSON export tools.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-acelera-submission-formatter.php';
+
+		/**
 		 * Global read access to the plugin settings (acelera_settings option).
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-acelera-settings.php';
@@ -248,6 +254,12 @@ class Formulario_Acelera_Ai_Daniel {
 		// right section for them.
 		$this->loader->add_action( 'wp_ajax_acelera_clientify_test', $plugin_admin, 'ajax_clientify_test' );
 		$this->loader->add_action( 'wp_ajax_acelera_clientify_resend', $plugin_admin, 'ajax_clientify_resend' );
+
+		// Submissions detail modal + module reorder + JSON exports.
+		$this->loader->add_action( 'wp_ajax_acelera_get_submission_detail', $plugin_admin, 'ajax_get_submission_detail' );
+		$this->loader->add_action( 'wp_ajax_acelera_save_module_order', $plugin_admin, 'ajax_save_module_order' );
+		$this->loader->add_action( 'wp_ajax_acelera_export_submission', $plugin_admin, 'ajax_export_submission' );
+		$this->loader->add_action( 'wp_ajax_acelera_export_all_submissions', $plugin_admin, 'ajax_export_all_submissions' );
 
 		// LLM feedback support tool (Fase 6.4): clear a user's cached
 		// feedback so it regenerates on their next visit.

@@ -2,3 +2,86 @@
  * All of the CSS for your admin-specific functionality should be
  * included in this file.
  */
+
+/* --- Submissions: "Ver respuestas" modal ------------------------------ */
+
+.acelera-modal-hidden {
+	display: none;
+}
+
+.acelera-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+}
+
+.acelera-modal-overlay {
+	position: absolute;
+	inset: 0;
+	background: rgba( 0, 0, 0, 0.5 );
+}
+
+.acelera-modal-box {
+	position: relative;
+	max-width: 800px;
+	max-height: 85vh;
+	overflow-y: auto;
+	margin: 5vh auto;
+	background: #fff;
+	padding: 24px;
+	border-radius: 4px;
+	box-shadow: 0 4px 20px rgba( 0, 0, 0, 0.3 );
+}
+
+.acelera-modal-close {
+	position: absolute;
+	top: 12px;
+	right: 16px;
+	background: none;
+	border: none;
+	font-size: 24px;
+	line-height: 1;
+	cursor: pointer;
+	color: #50575e;
+}
+
+.acelera-modal-close:hover {
+	color: #d63638;
+}
+
+.acelera-answers-table td {
+	vertical-align: top;
+}
+
+.acelera-answers-table td:first-child {
+	width: 40%;
+	font-weight: 600;
+}
+
+/* --- Submissions: module order sortable list --------------------------- */
+
+#acelera-module-order-list {
+	margin: 0 0 12px;
+	padding: 0;
+	list-style: none;
+	max-width: 480px;
+}
+
+.acelera-module-item {
+	cursor: move;
+	padding: 8px 12px;
+	margin-bottom: 4px;
+	background: #f0f0f1;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+}
+
+.acelera-module-list-readonly .acelera-module-item {
+	cursor: default;
+}
+
+.acelera-module-item.ui-sortable-placeholder {
+	visibility: visible !important;
+	background: #d7d7d7;
+	border: 1px dashed #999;
+}

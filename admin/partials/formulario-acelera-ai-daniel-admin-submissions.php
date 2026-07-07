@@ -40,6 +40,25 @@ $acelera_status_labels = array(
 		?>
 	</p>
 
+	<p>
+		<a
+			class="button"
+			href="<?php
+			echo esc_url(
+				add_query_arg(
+					array(
+						'action' => 'acelera_export_all_submissions',
+						'nonce'  => wp_create_nonce( Formulario_Acelera_Ai_Daniel_Admin::SUBMISSIONS_NONCE_ACTION ),
+					),
+					admin_url( 'admin-ajax.php' )
+				)
+			);
+			?>"
+		>
+			<?php esc_html_e( 'Exportar todas (JSON)', 'formulario-acelera-ai-daniel' ); ?>
+		</a>
+	</p>
+
 	<table class="widefat striped">
 		<thead>
 			<tr>
@@ -95,6 +114,26 @@ $acelera_status_labels = array(
 						</td>
 						<td><?php echo $acelera_last_error ? esc_html( (string) $acelera_last_error ) : '&mdash;'; ?></td>
 						<td>
+							<button type="button" class="button button-small acelera-view-submission" data-submission-id="<?php echo (int) $submission->id; ?>">
+								<?php esc_html_e( 'Ver respuestas', 'formulario-acelera-ai-daniel' ); ?>
+							</button>
+							<a
+								class="button button-small"
+								href="<?php
+								echo esc_url(
+									add_query_arg(
+										array(
+											'action'        => 'acelera_export_submission',
+											'submission_id' => (int) $submission->id,
+											'nonce'         => wp_create_nonce( Formulario_Acelera_Ai_Daniel_Admin::SUBMISSIONS_NONCE_ACTION ),
+										),
+										admin_url( 'admin-ajax.php' )
+									)
+								);
+								?>"
+							>
+								<?php esc_html_e( 'Descargar JSON', 'formulario-acelera-ai-daniel' ); ?>
+							</a>
 							<?php if ( $acelera_resendable ) : ?>
 								<button type="button" class="button button-small acelera-clientify-resend" data-submission-id="<?php echo (int) $submission->id; ?>">
 									<?php esc_html_e( 'Reenviar', 'formulario-acelera-ai-daniel' ); ?>
@@ -128,4 +167,12 @@ $acelera_status_labels = array(
 			</div>
 		</div>
 	<?php endif; ?>
+
+	<div id="acelera-submission-modal" class="acelera-modal acelera-modal-hidden">
+		<div class="acelera-modal-overlay"></div>
+		<div class="acelera-modal-box">
+			<button type="button" class="acelera-modal-close" aria-label="<?php esc_attr_e( 'Cerrar', 'formulario-acelera-ai-daniel' ); ?>">&times;</button>
+			<div class="acelera-modal-content"></div>
+		</div>
+	</div>
 </div>
