@@ -138,17 +138,44 @@ class Acelera_Welcome_Gate {
 	 */
 	public static function first_incomplete_welcome_lesson( $user_id ) {
 
+		$incomplete = self::incomplete_welcome_lessons( $user_id );
+
+		return array() !== $incomplete ? $incomplete[0] : Acelera_Course_Map::WELCOME_LESSONS[0];
+
+	}
+
+	/**
+	 * All incomplete Welcome lessons for the user, in map order.
+	 *
+	 * Used by the gate notice to list every pending Welcome lesson (with
+	 * a direct link) instead of just the first one. Shares the same
+	 * per-lesson check as first_incomplete_welcome_lesson(), which now
+	 * delegates here to avoid duplicating the loop.
+	 *
+	 * @since    1.0.0
+	 * @param    int $user_id User ID.
+	 * @return   int[] Lesson post IDs still pending, same order as
+	 *                 Acelera_Course_Map::WELCOME_LESSONS. Empty array
+	 *                 when everything is complete or LearnDash/user are
+	 *                 unavailable to check against.
+	 */
+	public static function incomplete_welcome_lessons( $user_id ) {
+
 		$welcome_lessons = Acelera_Course_Map::WELCOME_LESSONS;
 
-		if ( function_exists( 'learndash_is_lesson_complete' ) && (int) $user_id > 0 ) {
-			foreach ( $welcome_lessons as $lesson_id ) {
-				if ( ! learndash_is_lesson_complete( (int) $user_id, $lesson_id, Acelera_Course_Map::COURSE_ID ) ) {
-					return $lesson_id;
-				}
+		if ( ! function_exists( 'learndash_is_lesson_complete' ) || (int) $user_id <= 0 ) {
+			return array();
+		}
+
+		$incomplete = array();
+
+		foreach ( $welcome_lessons as $lesson_id ) {
+			if ( ! learndash_is_lesson_complete( (int) $user_id, $lesson_id, Acelera_Course_Map::COURSE_ID ) ) {
+				$incomplete[] = $lesson_id;
 			}
 		}
 
-		return $welcome_lessons[0];
+		return $incomplete;
 
 	}
 

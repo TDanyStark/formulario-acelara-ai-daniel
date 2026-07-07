@@ -447,7 +447,10 @@ class Formulario_Acelera_Ai_Daniel_Public {
 	 * Build the gate notice markup (at most once per request).
 	 *
 	 * Empty string unless ?acelera_gate=1 is present AND the current
-	 * singular is one of the Welcome lessons.
+	 * singular is one of the Welcome lessons. Lists the specific pending
+	 * Welcome lessons (Acelera_Welcome_Gate::incomplete_welcome_lessons())
+	 * as direct links so the user knows exactly what's left, falling back
+	 * to the generic message if that list is unexpectedly empty.
 	 *
 	 * @since    1.0.0
 	 * @access   private
@@ -471,50 +474,83 @@ class Formulario_Acelera_Ai_Daniel_Public {
 
 		$this->gate_notice_rendered = true;
 
+		$generic_message = esc_html__( 'Debes completar el módulo de Bienvenida antes de acceder al resto del curso.', 'formulario-acelera-ai-daniel' );
+
+		if ( ! class_exists( 'Acelera_Welcome_Gate' ) ) {
+			return sprintf( '<div class="acelera-gate-notice" role="alert">%s</div>', $generic_message );
+		}
+
+		$pending_lessons = Acelera_Welcome_Gate::incomplete_welcome_lessons( get_current_user_id() );
+
+		if ( array() === $pending_lessons ) {
+			return sprintf( '<div class="acelera-gate-notice" role="alert">%s</div>', $generic_message );
+		}
+
+		$items = '';
+
+		foreach ( $pending_lessons as $lesson_id ) {
+
+			$permalink = get_permalink( $lesson_id );
+
+			if ( ! $permalink ) {
+				continue;
+			}
+
+			$items .= sprintf(
+				'<li><a href="%1$s">%2$s</a></li>',
+				esc_url( $permalink ),
+				esc_html( get_the_title( $lesson_id ) )
+			);
+		}
+
+		if ( '' === $items ) {
+			return sprintf( '<div class="acelera-gate-notice" role="alert">%s</div>', $generic_message );
+		}
+
 		return sprintf(
-			'<div class="acelera-gate-notice" role="alert">%s</div>',
-			esc_html__( 'Debes completar el módulo de Bienvenida antes de acceder al resto del curso.', 'formulario-acelera-ai-daniel' )
+			'<div class="acelera-gate-notice" role="alert"><p>%1$s</p><ul class="acelera-gate-notice-list">%2$s</ul></div>',
+			esc_html__( 'Debes completar el módulo de Bienvenida antes de acceder al resto del curso. Te falta completar:', 'formulario-acelera-ai-daniel' ),
+			$items // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Built from esc_url()/esc_html() above.
 		);
 
 	}
 
 	/**
-	 * Layer B — LearnDash read-step filter for visual/logical consistency.
+	 * Layer B (DEPRECATED — now a no-op) — former LearnDash read-step filter.
 	 *
 	 * Hooked to `learndash_can_user_read_step` (apply_filters in
-	 * sfwd-lms/includes/classes/class-ldlms-model-course.php:264). The
-	 * filter carries no user argument, so the current user is evaluated.
-	 * Full enforcement by LD depends on LEARNDASH_COURSE_STEP_READ_CHECK;
-	 * the template_redirect layer remains the real guarantee.
+	 * sfwd-lms/includes/classes/class-ldlms-model-course.php:264). This
+	 * method used to return `false` for locked M1–M5 steps for "visual/
+	 * logical consistency", but that filter is NOT cosmetic: LearnDash
+	 * core (class-ldlms-model-course.php get_lessons()/get_sections())
+	 * uses its result to unset() the step from the array that feeds the
+	 * course sidebar and Focus Mode navigation whenever
+	 * LEARNDASH_COURSE_STEP_READ_CHECK is true (the default, and the
+	 * value in this install — see learndash-scalar-constants.php).
+	 * Returning false here was therefore REMOVING locked lessons from the
+	 * sidebar entirely instead of just marking them locked, which is why
+	 * M1–M5 disappeared for users who hadn't finished Bienvenida.
+	 *
+	 * Real access control does not depend on this filter:
+	 * - Hard enforcement: gate_template_redirect() (hooked to
+	 *   `template_redirect`) redirects away from any locked lesson/topic/
+	 *   quiz singular before it ever renders.
+	 * - Visual signaling: gate_lesson_row_class() adds `.acelera-locked`
+	 *   to the row (padlock + opacity via CSS) and the public JS
+	 *   neutralizes clicks on those rows.
+	 *
+	 * The method is kept (rather than deleted) as a no-op passthrough for
+	 * backward compatibility and to document why it must never again
+	 * return false — see includes/class-formulario-acelera-ai-daniel.php
+	 * define_public_hooks() for the (now removed) hook registration.
 	 *
 	 * @since    1.0.0
 	 * @param    bool $user_can_read True if the user can read the step.
 	 * @param    int  $step_post_id  Step post ID.
 	 * @param    int  $course_id     Course post ID.
-	 * @return   bool
+	 * @return   bool Always $user_can_read, unmodified.
 	 */
 	public function gate_can_user_read_step( $user_can_read, $step_post_id, $course_id ) {
-
-		if ( ! $user_can_read || (int) $course_id !== Acelera_Course_Map::COURSE_ID || ! class_exists( 'Acelera_Welcome_Gate' ) ) {
-			return $user_can_read;
-		}
-
-		$user_id = get_current_user_id();
-
-		if ( 0 === $user_id ) {
-			return $user_can_read;
-		}
-
-		$lesson_id = (int) $step_post_id;
-
-		// Topics/quizzes inherit the lock from their parent lesson.
-		if ( 'sfwd-lessons' !== get_post_type( $step_post_id ) && function_exists( 'learndash_get_lesson_id' ) ) {
-			$lesson_id = (int) learndash_get_lesson_id( $step_post_id, Acelera_Course_Map::COURSE_ID );
-		}
-
-		if ( $lesson_id && Acelera_Welcome_Gate::is_lesson_locked( $lesson_id, $user_id ) ) {
-			return false;
-		}
 
 		return $user_can_read;
 

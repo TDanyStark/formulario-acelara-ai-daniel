@@ -284,8 +284,16 @@ class Formulario_Acelera_Ai_Daniel {
 		$this->loader->add_action( 'learndash-focus-content-content-before', $plugin_public, 'gate_render_focus_notice', 10, 2 );
 		$this->loader->add_filter( 'the_content', $plugin_public, 'gate_prepend_notice' );
 
-		// Layer B: LearnDash read-step filter (visual/logical consistency).
-		$this->loader->add_filter( 'learndash_can_user_read_step', $plugin_public, 'gate_can_user_read_step', 10, 3 );
+		// Layer B removed: `learndash_can_user_read_step` returning false
+		// made LearnDash core unset() the locked M1–M5 steps from the
+		// sidebar/Focus Mode arrays (LEARNDASH_COURSE_STEP_READ_CHECK is
+		// true in this install), which hid the modules entirely instead of
+		// just locking them. Real enforcement is `template_redirect`
+		// (gate_template_redirect) and visual locking is
+		// `learndash_lesson_row_class` / `learndash-nav-widget-lesson-class`
+		// (gate_lesson_row_class) below. gate_can_user_read_step() is kept
+		// as a documented no-op in the public class but intentionally no
+		// longer hooked here.
 
 		// Sidebar / course listing signaling: add .acelera-locked to rows.
 		$this->loader->add_filter( 'learndash_lesson_row_class', $plugin_public, 'gate_lesson_row_class', 10, 2 );

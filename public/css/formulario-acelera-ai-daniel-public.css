@@ -41,3 +41,24 @@
 	font-weight: 600;
 	border-radius: 3px;
 }
+
+.acelera-gate-notice p {
+	margin: 0 0 0.5em;
+}
+
+/* List of pending Welcome lessons inside the gate notice. */
+.acelera-gate-notice-list {
+	margin: 0;
+	padding-left: 1.4em;
+	list-style: disc;
+	font-weight: 400;
+}
+
+.acelera-gate-notice-list li {
+	margin: 0 0 0.3em;
+}
+
+.acelera-gate-notice-list a {
+	color: #d63638;
+	text-decoration: underline;
+}
